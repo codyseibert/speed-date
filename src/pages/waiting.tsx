@@ -1,4 +1,4 @@
-import { useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -12,13 +12,14 @@ const WaitingPage: NextPage = () => {
   const getMatchQuery = trpc.useQuery(["users.getMatch", { userId }]);
   const router = useRouter();
 
+  // app first loads, find a user to match with
   useEffect(() => {
+    if (!findUserQuery.data) return;
     const match = findUserQuery.data;
-    if (match) {
-      router.push(`/chatting/${match.id}`);
-    }
+    router.push(`/chatting/${match.id}`);
   }, [findUserQuery.data, router]);
 
+  // interval fires, someone matched with us
   useEffect(() => {
     const match = getMatchQuery.data;
     if (match) {
