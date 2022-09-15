@@ -10,7 +10,14 @@ const WaitingPage: NextPage = () => {
   const [userId] = useAtom(userIdAtom);
   const findUserQuery = trpc.useQuery(["users.findMatch", { userId }]);
   const getMatchQuery = trpc.useQuery(["users.getMatch", { userId }]);
+  const setStatusMutation = trpc.useMutation("users.setStatus");
+
   const router = useRouter();
+
+  useEffect(() => {
+    if (!userId) return;
+    setStatusMutation.mutate({ userId, status: "waiting" });
+  }, []);
 
   // app first loads, find a user to match with
   useEffect(() => {

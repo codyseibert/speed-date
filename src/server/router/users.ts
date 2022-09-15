@@ -14,6 +14,22 @@ export const usersRouter = createRouter()
       return newlyCreatedUser;
     },
   })
+  .mutation("setStatus", {
+    input: z.object({
+      userId: z.string(),
+      status: z.string(),
+    }),
+    async resolve({ input, ctx }) {
+      await ctx.prisma.speedDateUser.update({
+        where: {
+          id: input.userId,
+        },
+        data: {
+          status: input.status,
+        },
+      });
+    },
+  })
   .query("findMatch", {
     input: z.object({
       userId: z.string(),
