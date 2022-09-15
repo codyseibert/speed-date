@@ -1,7 +1,41 @@
+import { useAtom } from "jotai";
 import type { NextPage } from "next";
 import Head from "next/head";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
+import { userIdAtom } from ".";
+import { trpc } from "../utils/trpc";
 
 const WaitingPage: NextPage = () => {
+  const [userId] = useAtom(userIdAtom);
+  const findUserQuery = trpc.useQuery(["users.findMatch", { userId }]);
+  const getMatchQuery = trpc.useQuery(["users.getMatch", { userId }]);
+  const router = useRouter();
+
+  useEffect(() => {
+    const match = findUserQuery.data;
+    if (match) {
+      router.push(`/chatting/${match.id}`);
+    }
+  }, [findUserQuery.data, router]);
+
+  useEffect(() => {
+    const match = getMatchQuery.data;
+    if (match) {
+      router.push(`/chatting/${match.id}`);
+    }
+  }, [getMatchQuery.data, router]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getMatchQuery.refetch();
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [getMatchQuery]);
+
   return (
     <>
       <Head>

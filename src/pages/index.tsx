@@ -4,15 +4,19 @@ import { useRouter } from "next/router";
 import { Button, Input, Form } from "react-daisyui";
 import { useForm } from "react-hook-form";
 import { trpc } from "../utils/trpc";
+import { atom, useAtom } from "jotai";
 
 type RegisterForm = {
   name: string;
   contactInfo: string;
 };
 
+export const userIdAtom = atom("");
+
 const Home: NextPage = () => {
   const createUser = trpc.useMutation("users.createUser");
   const router = useRouter();
+  const [, setUserId] = useAtom(userIdAtom);
 
   const {
     register,
@@ -22,6 +26,7 @@ const Home: NextPage = () => {
 
   const onSubmit = async (data: RegisterForm) => {
     const newUser = await createUser.mutateAsync(data);
+    setUserId(newUser.id);
     router.push("/waiting");
   };
 

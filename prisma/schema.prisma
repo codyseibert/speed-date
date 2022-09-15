@@ -67,4 +67,16 @@ model SpeedDateUser {
   id String  @id @default(cuid())
   name String
   contactInfo String
+  status String @default("waiting")
+  sourceMatches Match[] @relation("SourceMatches")
+  sinkMatches Match[] @relation("SinkMatches")
+}
+
+model Match {
+  id String  @id @default(cuid())
+  sourceUserId String
+  sourceUser SpeedDateUser @relation(name: "SourceMatches", fields: [sourceUserId], references: [id], onDelete: Cascade)
+  sinkUserId String
+  sinkUser SpeedDateUser @relation(name: "SinkMatches", fields: [sinkUserId], references: [id], onDelete: Cascade)
+  status String @default("running")
 }
