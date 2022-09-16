@@ -75,8 +75,13 @@ model SpeedDateUser {
 model Match {
   id String  @id @default(cuid())
   sourceUserId String
+  endsOn String?
   sourceUser SpeedDateUser @relation(name: "SourceMatches", fields: [sourceUserId], references: [id], onDelete: Cascade)
+  sourceUserJoined Boolean @default(false)
   sinkUserId String
+  sinkUserJoined Boolean @default(false)
   sinkUser SpeedDateUser @relation(name: "SinkMatches", fields: [sinkUserId], references: [id], onDelete: Cascade)
-  status String @default("running")
+  status String @default("waiting")
+  sourceUserFeedback String?
+  sinkUserFeedback String?
 }

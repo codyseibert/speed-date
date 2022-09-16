@@ -3,6 +3,67 @@ import { z } from "zod";
 import { RtcTokenBuilder, RtcRole } from "agora-access-token";
 
 export const matchesRouter = createRouter()
+  .mutation("postFeedback", {
+    input: z.object({
+      matchId: z.string(),
+      userId: z.string(),
+      status: z.string(),
+    }),
+    async resolve({ input, ctx }) {
+      const match = await ctx.prisma.match.findUnique({
+        where: {
+          id: input.matchId,
+        },
+      });
+
+      const isSinkUser = match?.sinkUserId === input.userId;
+
+      await ctx.prisma.match.update({
+        where: {
+          id: input.matchId,
+        },
+        data: {
+          [isSinkUser ? "sinkUserFeedback" : "sourceUserFeedback"]:
+            input.status,
+        },
+      });
+    },
+  })
+  .mutation("joinMatch", {
+    input: z.object({
+      matchId: z.string(),
+      userId: z.string(),
+    }),
+    async resolve({ input, ctx }) {
+      const match = await ctx.prisma.match.findUnique({
+        where: {
+          id: input.matchId,
+        },
+      });
+      const isSinkUser = input.userId === match?.sinkUserId;
+
+      const updatedMatch = await ctx.prisma.match.update({
+        where: {
+          id: input.matchId,
+        },
+        data: {
+          [isSinkUser ? "sinkUserJoined" : "sourceUserJoined"]: true,
+        },
+      });
+
+      if (updatedMatch.sinkUserJoined && updatedMatch.sourceUserJoined) {
+        await ctx.prisma.match.update({
+          where: {
+            id: input.matchId,
+          },
+          data: {
+            status: "chatting",
+            endsOn: `${Date.now() + 20 * 1000}`,
+          },
+        });
+      }
+    },
+  })
   .query("getMatch", {
     input: z.object({
       matchId: z.string(),

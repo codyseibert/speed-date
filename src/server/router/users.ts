@@ -50,6 +50,7 @@ export const usersRouter = createRouter()
         data: {
           sourceUserId: input.userId,
           sinkUserId: firstMatch.id,
+          status: "waiting",
         },
       });
 
@@ -64,6 +65,9 @@ export const usersRouter = createRouter()
       const match = await ctx.prisma.match.findFirst({
         where: {
           sinkUserId: input.userId,
+          NOT: {
+            status: "chatting",
+          },
         },
       });
       return match;

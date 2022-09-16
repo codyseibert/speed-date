@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { useAtom } from "jotai";
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -8,8 +8,16 @@ import { trpc } from "../utils/trpc";
 
 const WaitingPage: NextPage = () => {
   const [userId] = useAtom(userIdAtom);
-  const findUserQuery = trpc.useQuery(["users.findMatch", { userId }]);
-  const getMatchQuery = trpc.useQuery(["users.getMatch", { userId }]);
+  const findUserQuery = trpc.useQuery(["users.findMatch", { userId }], {
+    refetchOnWindowFocus: false,
+    cacheTime: 0,
+    staleTime: 0,
+  });
+  const getMatchQuery = trpc.useQuery(["users.getMatch", { userId }], {
+    refetchOnWindowFocus: false,
+    cacheTime: 0,
+    staleTime: 0,
+  });
   const setStatusMutation = trpc.useMutation("users.setStatus");
 
   const router = useRouter();

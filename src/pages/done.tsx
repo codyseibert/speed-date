@@ -1,10 +1,48 @@
+import { useAtom } from "jotai";
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import { Button } from "react-daisyui";
+import { userIdAtom } from ".";
+import { trpc } from "../utils/trpc";
+import { matchIdAtom } from "./chatting/[matchId]";
 
 const DonePage: NextPage = () => {
   const router = useRouter();
+  const [userId] = useAtom(userIdAtom);
+  const [matchId] = useAtom(matchIdAtom);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const matchQuery = trpc.useQuery(["matches.getMatch", { matchId }]);
+
+  const postFeedbackMutation = trpc.useMutation("matches.postFeedback");
+
+  const postFeedback = async (status: string) => {
+    await postFeedbackMutation.mutateAsync({ status, userId, matchId });
+    setFeedbackSent(true);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      matchQuery.refetch();
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [matchQuery]);
+
+  const bothFeedbacksProvided =
+    matchQuery.data?.sinkUserFeedback && matchQuery.data?.sourceUserFeedback;
+
+  const bothLiked =
+    matchQuery.data?.sinkUserFeedback === "like" &&
+    matchQuery.data?.sourceUserFeedback === "like";
+
+  const isSinkUser = matchQuery.data?.sinkUserId === userId;
+  const contactInfo = isSinkUser
+    ? matchQuery.data?.sourceUser.contactInfo
+    : matchQuery.data?.sinkUser.contactInfo;
 
   return (
     <>
@@ -15,11 +53,34 @@ const DonePage: NextPage = () => {
       </Head>
 
       <main className="container mx-auto flex flex-col gap-6 items-center justify-center min-h-screen p-4">
-        <h3 className="text-xl">Speed Dating Done</h3>
+        <h3 className="text-xl">Please Rate your Session</h3>
 
-        <Button onClick={() => router.push("/waiting")}>
-          Go to Waiting Room
-        </Button>
+        <div className="flex gap-4">
+          {!feedbackSent && (
+            <>
+              <Button onClick={() => postFeedback("like")} color="success">
+                Like
+              </Button>
+              <Button onClick={() => postFeedback("dislike")} color="error">
+                Dislike
+              </Button>
+            </>
+          )}
+        </div>
+
+        {feedbackSent && !bothFeedbacksProvided && (
+          <div>Waiting for other user to give like or dislike</div>
+        )}
+
+        {bothFeedbacksProvided && bothLiked && (
+          <div>Their Contact Info: {contactInfo}</div>
+        )}
+
+        {bothFeedbacksProvided && (
+          <Button onClick={() => router.push("/waiting")}>
+            Go to Waiting Room
+          </Button>
+        )}
       </main>
     </>
   );

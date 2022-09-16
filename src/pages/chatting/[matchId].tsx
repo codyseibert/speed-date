@@ -1,9 +1,10 @@
 import {
   IAgoraRTCRemoteUser,
   ICameraVideoTrack,
+  IMicrophoneAudioTrack,
   IRemoteVideoTrack,
 } from "agora-rtc-sdk-ng";
-import { useAtom } from "jotai";
+import { atom, useAtom } from "jotai";
 import type { NextPage } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -13,6 +14,8 @@ import { trpc } from "../../utils/trpc";
 import Countdown from "react-countdown";
 
 const APP_ID = process.env.NEXT_PUBLIC_AGORA_APP_ID!;
+
+export const matchIdAtom = atom("");
 
 export const VideoPlayer = ({
   videoTrack,
@@ -39,7 +42,8 @@ export const VideoPlayer = ({
 };
 
 const ChattingPage: NextPage = () => {
-  const [timeLeft] = useState(Date.now() + 1000 * 20);
+  const [, setMatchIdGlobal] = useAtom(matchIdAtom);
+  // const [timeLeft] = useState(Date.now() + 1000 * 10);
   const [userId] = useAtom(userIdAtom);
   const router = useRouter();
   const matchId = router.query.matchId as string;
@@ -53,11 +57,32 @@ const ChattingPage: NextPage = () => {
   const [videoTrack, setVideoTrack] = useState<ICameraVideoTrack>();
 
   const setStatusMutation = trpc.useMutation("users.setStatus");
+  const joinMatchMutation = trpc.useMutation("matches.joinMatch");
+
+  useEffect(() => {
+    if (!matchId) return;
+    setMatchIdGlobal(matchId);
+  }, [matchId, setMatchIdGlobal]);
 
   useEffect(() => {
     if (!userId) return;
     setStatusMutation.mutate({ userId, status: "chatting" });
+    joinMatchMutation.mutate({ matchId, userId });
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      matchQuery.refetch();
+    }, 1000);
+
+    if (matchQuery.data?.endsOn) {
+      clearInterval(interval);
+    }
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [matchQuery]);
 
   let otherUserName = "";
 
@@ -83,7 +108,6 @@ const ChattingPage: NextPage = () => {
     if (!token) return;
 
     const connect = async () => {
-      console.log("connecting", userId);
       const { default: AgoraRTC } = await import("agora-rtc-sdk-ng");
 
       const client = AgoraRTC.createClient({
@@ -98,12 +122,16 @@ const ChattingPage: NextPage = () => {
           if (mediaType === "video") {
             setOtherUser(otherUser);
           }
+
+          if (mediaType === "audio") {
+            otherUser.audioTrack?.play();
+          }
         });
       });
 
       const tracks = await AgoraRTC.createMicrophoneAndCameraTracks();
       setVideoTrack(tracks[1]);
-      await client.publish(tracks[1]);
+      await client.publish(tracks);
 
       return { tracks, client };
     };
@@ -115,6 +143,8 @@ const ChattingPage: NextPage = () => {
       const disconnect = async () => {
         const { tracks, client } = await connection;
         client.removeAllListeners();
+        tracks[0]?.stop();
+        tracks[0]?.close();
         tracks[1]?.stop();
         tracks[1]?.close();
         await client.unpublish(tracks[1]);
@@ -135,7 +165,12 @@ const ChattingPage: NextPage = () => {
       <main className="container mx-auto flex flex-col gap-6 items-center justify-center min-h-screen p-4">
         <h3 className="text-xl">Chatting with {otherUserName}</h3>
 
-        <Countdown date={timeLeft} onComplete={handleCountdownCompleted} />
+        {matchQuery.data?.endsOn && (
+          <Countdown
+            date={parseInt(matchQuery.data.endsOn)}
+            onComplete={handleCountdownCompleted}
+          />
+        )}
 
         <div className="grid grid-cols-2">
           {otherUser?.videoTrack && (
